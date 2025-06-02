@@ -1,1 +1,589 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ratジム栄養計算アプリ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa; /* Light gray background */
+        }
+        .tab-active {
+            border-bottom-width: 2px;
+            border-color: #e63946; /* Rat Red */
+            color: #e63946; /* Rat Red */
+            font-weight: 600;
+        }
+        .food-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .food-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .modal {
+            display: none; position: fixed; z-index: 1000;
+            left: 0; top: 0; width: 100%; height: 100%;
+            overflow: auto; background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #ffffff; margin: 10% auto; padding: 25px;
+            border: 1px solid #dee2e6; width: 85%; max-width: 500px;
+            border-radius: 0.75rem; box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        .close-button {
+            color: #adb5bd; float: right; font-size: 32px; font-weight: bold;
+        }
+        .close-button:hover, .close-button:focus {
+            color: #343a40; text-decoration: none; cursor: pointer;
+        }
+        .food-image {
+            width: 60px; height: 60px; object-fit: cover; border-radius: 0.375rem; /* rounded-md */
+            border: 1px solid #e9ecef;
+        }
+        .add-to-list-button {
+            transition: background-color 0.2s ease;
+        }
+        .rat-header-bg {
+            background-color: #212529; /* Dark background for header */
+            color: #ffffff;
+        }
+        .rat-primary-button {
+            background-color: #e63946; /* Rat Red */
+            color: #ffffff;
+        }
+        .rat-primary-button:hover {
+            background-color: #c22531; /* Darker Rat Red */
+        }
+        .rat-secondary-button {
+            background-color: #fca311; /* Rat Yellow/Orange Accent */
+            color: #212529; /* Dark text on yellow */
+        }
+        .rat-secondary-button:hover {
+            background-color: #e0900d;
+        }
+        .section-title {
+            color: #1d3557; /* Dark Blue for section titles */
+        }
+        .card-title {
+            color: #e63946; /* Rat Red for card titles */
+        }
+        .toggle-button {
+            cursor: pointer;
+            padding: 1rem;
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.2s ease;
+        }
+        .toggle-button:hover {
+            background-color: #f1f3f5;
+        }
+        .toggle-content {
+            display: none;
+            padding: 1rem;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 0.5rem 0.5rem;
+            background-color: #ffffff;
+        }
+        .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+        .toggle-button.open .toggle-icon {
+            transform: rotate(180deg);
+        }
+        .guide-map-image {
+            width: 100%; 
+            max-width: 100%; /* Changed from 350px to 100% for better responsiveness within its container */
+            height: auto;
+            border-radius: 0.5rem;
+            border: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+    <div class="rat-header-bg py-4 shadow-md">
+        <div class="container mx-auto px-4 flex items-center justify-center">
+            <img id="characterImage" src="" alt="Ratジム キャラクター" class="h-16 w-16 mr-4 rounded-full">
+            <div>
+                <h1 class="text-3xl font-bold">Ratジム</h1>
+                <h2 class="text-xl font-semibold">栄養計算アプリ</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mx-auto p-4 max-w-4xl">
+        <div class="mb-6">
+            <button id="guideToggleButton" class="toggle-button w-full text-left">
+                <span class="text-lg font-semibold section-title">Ratジム式 栄養管理ガイド</span>
+                <span class="toggle-icon text-red-500 text-xl">▼</span>
+            </button>
+            <div id="guideToggleContent" class="toggle-content">
+                <div class="md:flex md:gap-6"> 
+                    <div class="md:w-1/2 space-y-4 mb-4 md:mb-0"> 
+                        <div>
+                            <h4 class="font-semibold text-md text-red-600 mb-1">栄養カテゴリーとその指針</h4>
+                            <ul class="list-disc list-inside text-sm space-y-1 text-gray-700">
+                                <li><strong class="text-green-600">カテゴリー 2と3 (Must):</strong> 毎食に必ず食べるべきもの</li>
+                                <li><strong class="text-blue-600">カテゴリー 1 (Best):</strong> 毎食に食べても良いもの</li>
+                                <li><strong class="text-yellow-600">カテゴリー 4と5 (Better):</strong> 気にしながら食べるもの (1食1品までが理想。減量時は1日1品まで)</li>
+                                <li><strong class="text-gray-600">カテゴリー 6以上 (Poor):</strong> 避けるべきもの</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-md text-red-600 mb-1">調理に関する注意事項</h4>
+                            <p class="text-sm text-gray-700">
+                                各カテゴリーにある食品に「焼く、蒸す、湯がく、オイルやドレッシングを小さじ1かける」以外の調理がされたら1ランクカテゴリーが下がります。
+                            </p>
+                            <ul class="list-disc list-inside text-sm space-y-1 mt-1 text-gray-600">
+                                <li>例：サバ(Must) × 味噌で煮る ⇒ サバの味噌煮込み(Best)</li>
+                                <li>例：全乳ヨーグルト(Better) × 砂糖やジャムをかける ⇒ フルーツヨーグルト(Poor)</li>
+                            </ul>
+                        </div>
+                         <div>
+                            <h4 class="font-semibold text-md text-red-600 mb-1">ダイエットのポイント</h4>
+                            <p class="text-sm text-gray-700">
+                                ダイエットはカテゴリー1, 2, 3になるべく揃えることで効率よくすすみます！
+                            </p>
+                        </div>
+                    </div>
+                    <div class="md:w-1/2"> 
+                        <h4 class="font-semibold text-md text-red-600 mb-2 mt-4 md:mt-0">Food Category Map</h4>
+                        <img id="foodCategoryMapImage" src="" alt="Food Category Map" class="guide-map-image">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-6 p-4 bg-white shadow-lg rounded-lg">
+            <div class="mb-4">
+                <input type="text" id="searchInput" placeholder="食材名で検索..." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-shadow">
+            </div>
+            <div class="flex flex-wrap -mx-1 border-b border-gray-200" id="categoryTabs">
+                </div>
+        </div>
+
+        <div id="multiCalculationArea" class="mb-8 p-6 bg-white shadow-lg rounded-lg">
+            <h2 class="text-2xl font-semibold mb-4 section-title">まとめて栄養計算</h2>
+            <div id="selectedIngredientsList" class="space-y-3 mb-4">
+                </div>
+            <button id="calculateTotalNutritionButton" class="w-full rat-primary-button font-semibold py-3 px-4 rounded-lg transition-colors duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 mb-4 disabled:opacity-50" disabled>
+                選択した食材の合計を計算
+            </button>
+            <div id="totalNutritionResult" class="hidden p-4 bg-red-50 rounded-lg border border-red-200">
+                <h3 class="text-xl font-semibold mb-2 text-red-700">合計栄養価</h3>
+                <div class="space-y-1 text-sm text-gray-700">
+                    <p><strong>総合ポーション数:</strong> <span id="multiResultTotalPortions" class="font-semibold text-red-700"></span></p>
+                    <p><strong>総カロリー:</strong> <span id="multiResultTotalCalories" class="font-semibold text-red-700"></span> kcal</p>
+                    <p><strong>総糖質:</strong> <span id="multiResultTotalCarbs" class="font-semibold text-red-700"></span> g</p>
+                    <p><strong>総脂質:</strong> <span id="multiResultTotalFat" class="font-semibold text-red-700"></span> g</p>
+                    <p><strong>総タンパク質:</strong> <span id="multiResultTotalProtein" class="font-semibold text-red-700"></span> g</p>
+                    <p><strong>総食物繊維:</strong> <span id="multiResultTotalFiber" class="font-semibold text-red-700"></span> g</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="foodList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            </div>
+
+        <div id="calculationSection" class="p-6 bg-white shadow-lg rounded-lg mb-8 hidden">
+            <h2 class="text-2xl font-semibold mb-4 section-title">個別栄養計算</h2>
+            <div id="selectedFoodInfo" class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <h3 class="font-semibold text-lg text-blue-700" id="selectedFoodName"></h3>
+                <p class="text-sm text-gray-600">1ポーション (<span id="selectedFoodPortionWeight"></span>g): <span id="selectedFoodCalories"></span>kcal</p>
+                <p class="text-sm text-gray-600">目安量: <span id="selectedFoodPortionGuide"></span></p>
+            </div>
+            <div class="mb-4">
+                <label for="gramsInput" class="block text-sm font-medium text-gray-700 mb-1">摂取量 (g):</label>
+                <input type="number" id="gramsInput" placeholder="例: 100" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-shadow">
+            </div>
+            <button id="calculateButton" class="w-full rat-primary-button font-semibold py-3 px-4 rounded-lg transition-colors duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50">
+                計算する
+            </button>
+        </div>
+
+        <div id="calculationResult" class="p-6 bg-white shadow-lg rounded-lg hidden">
+            <h2 class="text-2xl font-semibold mb-4 text-green-600">計算結果 (個別)</h2>
+            <div class="space-y-2 text-gray-700">
+                <p><strong>ポーション数:</strong> <span id="resultPortions" class="font-semibold text-green-700"></span></p>
+                <p><strong>総カロリー:</strong> <span id="resultTotalCalories" class="font-semibold text-green-700"></span> kcal</p>
+                <p><strong>総糖質:</strong> <span id="resultTotalCarbs" class="font-semibold text-green-700"></span> g</p>
+                <p><strong>総脂質:</strong> <span id="resultTotalFat" class="font-semibold text-green-700"></span> g</p>
+                <p><strong>総タンパク質:</strong> <span id="resultTotalProtein" class="font-semibold text-green-700"></span> g</p>
+                <p><strong>総食物繊維:</strong> <span id="resultTotalFiber" class="font-semibold text-green-700"></span> g</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="infoModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="closeModalButton">&times;</span>
+            <h2 id="modalTitle" class="text-xl font-semibold mb-3 text-red-600">情報</h2>
+            <p id="modalMessage" class="text-gray-700"></p>
+        </div>
+    </div>
+
+    <script>
+        const SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSrDp5uMBEcJ38S9GBvCV6vZd5L98O92dW1aB-U5rlcqZmKimlZv9cr2k4XAR53EUiYa6AITEkGVEnc/pub?gid=0&single=true&output=csv';
+        const characterImageUrl = 'https://i.imgur.com/qTekSS2.png'; 
+        const foodCategoryMapImageUrl = 'https://i.imgur.com/DA2WJkL.png';
+
+
+        let foodData = [];
+        let currentCategory = '';
+        let selectedFoodForSingleCalc = null; 
+        let selectedIngredientsList = []; 
+
+        // DOM要素
+        const characterImageEl = document.getElementById('characterImage');
+        const foodCategoryMapImageEl = document.getElementById('foodCategoryMapImage'); 
+        const searchInput = document.getElementById('searchInput');
+        const categoryTabsContainer = document.getElementById('categoryTabs');
+        const foodListContainer = document.getElementById('foodList');
+        const calculationSection = document.getElementById('calculationSection');
+        const selectedFoodNameEl = document.getElementById('selectedFoodName');
+        const selectedFoodPortionWeightEl = document.getElementById('selectedFoodPortionWeight');
+        const selectedFoodCaloriesEl = document.getElementById('selectedFoodCalories');
+        const selectedFoodPortionGuideEl = document.getElementById('selectedFoodPortionGuide');
+        const gramsInput = document.getElementById('gramsInput');
+        const calculateButton = document.getElementById('calculateButton');
+        const calculationResultSection = document.getElementById('calculationResult');
+        const resultPortionsEl = document.getElementById('resultPortions');
+        const resultTotalCaloriesEl = document.getElementById('resultTotalCalories');
+        const resultTotalCarbsEl = document.getElementById('resultTotalCarbs');
+        const resultTotalFatEl = document.getElementById('resultTotalFat');
+        const resultTotalProteinEl = document.getElementById('resultTotalProtein');
+        const resultTotalFiberEl = document.getElementById('resultTotalFiber');
+        const multiCalculationArea = document.getElementById('multiCalculationArea');
+        const selectedIngredientsListContainer = document.getElementById('selectedIngredientsList');
+        const calculateTotalNutritionButton = document.getElementById('calculateTotalNutritionButton');
+        const totalNutritionResultContainer = document.getElementById('totalNutritionResult');
+        const multiResultTotalPortionsEl = document.getElementById('multiResultTotalPortions');
+        const multiResultTotalCaloriesEl = document.getElementById('multiResultTotalCalories');
+        const multiResultTotalCarbsEl = document.getElementById('multiResultTotalCarbs');
+        const multiResultTotalFatEl = document.getElementById('multiResultTotalFat');
+        const multiResultTotalProteinEl = document.getElementById('multiResultTotalProtein');
+        const multiResultTotalFiberEl = document.getElementById('multiResultTotalFiber');
+        const infoModal = document.getElementById('infoModal');
+        const closeModalButton = document.getElementById('closeModalButton');
+        const modalTitleEl = document.getElementById('modalTitle');
+        const modalMessageEl = document.getElementById('modalMessage');
+        const guideToggleButton = document.getElementById('guideToggleButton');
+        const guideToggleContent = document.getElementById('guideToggleContent');
+
+
+        const sampleFoodData = [
+            {id: 1, category: "カテゴリー1 (穀類)", name: "玄米(めし)", portionWeight_g: 50, calories_kcal: 80, carbs_g: 17.8, protein_g: 1.4, fat_g: 0.5, fiber_g: 0.7, portionGuide: "しゃもじ1杯", imageUrl: ""},
+            {id: 2, category: "カテゴリー1 (穀類)", name: "食パン", portionWeight_g: 30, calories_kcal: 80, carbs_g: 14.0, protein_g: 2.8, fat_g: 1.3, fiber_g: 0.7, portionGuide: "6枚切り半分", imageUrl: "https://placehold.co/100x100/e2e8f0/cbd5e0?text=パン"},
+        ];
+
+        function showModal(title, message) {
+            modalTitleEl.textContent = title;
+            modalMessageEl.textContent = message;
+            infoModal.style.display = "block";
+        }
+        closeModalButton.onclick = function() { infoModal.style.display = "none"; }
+        window.onclick = function(event) {
+            if (event.target == infoModal) { infoModal.style.display = "none"; }
+        }
+
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split(/\r\n|\n/);
+            if (lines.length < 2) return [];
+            const headers = lines[0].split(',').map(header => header.trim());
+            const data = [];
+            const numericFields = ['id', 'portionWeight_g', 'calories_kcal', 'carbs_g', 'protein_g', 'fat_g', 'fiber_g'];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(value => value.trim());
+                if (values.length === headers.length) {
+                    const foodItem = {};
+                    headers.forEach((header, index) => {
+                        let value = values[index];
+                        if (numericFields.includes(header)) {
+                            value = parseFloat(value);
+                            if (isNaN(value)) value = 0;
+                        }
+                        foodItem[header] = value;
+                    });
+                    if (!foodItem.imageUrl) foodItem.imageUrl = ''; 
+                    data.push(foodItem);
+                } else {
+                     console.warn(`Skipping line ${i+1}: column count mismatch. Expected ${headers.length}, got ${values.length}. Line content: ${lines[i]}`);
+                }
+            }
+            return data;
+        }
+
+        async function fetchFoodData() {
+            characterImageEl.src = characterImageUrl; 
+            characterImageEl.onerror = () => { 
+                characterImageEl.src = 'https://placehold.co/64x64/cccccc/969696?text=Rat';
+                characterImageEl.alt = 'キャラクター画像読み込みエラー';
+            };
+            
+            foodCategoryMapImageEl.src = foodCategoryMapImageUrl; 
+            foodCategoryMapImageEl.onerror = () => {
+                foodCategoryMapImageEl.src = 'https://placehold.co/300x200/e9ecef/adb5bd?text=Map+Error';
+                foodCategoryMapImageEl.alt = 'Food Category Map 画像読み込みエラー';
+            };
+
+
+            if (SPREADSHEET_URL === 'YOUR_SPREADSHEET_CSV_URL_HERE' || !SPREADSHEET_URL) {
+                showModal("情報", "スプレッドシートURLが未設定です。サンプルデータを表示します。");
+                foodData = [...sampleFoodData];
+                return;
+            }
+            try {
+                const response = await fetch(SPREADSHEET_URL);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const csvText = await response.text();
+                const parsedData = parseCSV(csvText);
+                if (parsedData.length === 0) {
+                    showModal("データエラー", "スプレッドシートから有効なデータを読み込めませんでした。サンプルデータを表示します。");
+                    foodData = [...sampleFoodData];
+                } else {
+                    foodData = parsedData;
+                    showModal("情報", "スプレッドシートからデータを読み込みました。");
+                }
+            } catch (error) {
+                console.error('スプレッドシート取得エラー:', error);
+                showModal("取得エラー", `スプレッドシート取得失敗: ${error.message}。サンプルデータを表示します。`);
+                foodData = [...sampleFoodData];
+            }
+        }
+
+        function createCategoryTabs() {
+            const categories = [...new Set(foodData.map(food => food.category))];
+            categories.unshift("すべて");
+            categoryTabsContainer.innerHTML = '';
+            categories.forEach(category => {
+                const tab = document.createElement('button');
+                tab.textContent = category;
+                tab.className = 'px-3 py-2 text-sm font-medium text-gray-600 hover:text-red-600 focus:outline-none mx-1 mb-1 rounded-t-lg';
+                if (category === (currentCategory || "すべて")) tab.classList.add('tab-active');
+                tab.addEventListener('click', () => {
+                    currentCategory = category === "すべて" ? '' : category;
+                    document.querySelectorAll('#categoryTabs button').forEach(btn => btn.classList.remove('tab-active'));
+                    tab.classList.add('tab-active');
+                    displayFoods();
+                });
+                categoryTabsContainer.appendChild(tab);
+            });
+            if (!currentCategory && categories.length > 0) {
+                 currentCategory = "";
+                 if (categoryTabsContainer.firstChild) categoryTabsContainer.firstChild.classList.add('tab-active');
+            }
+        }
+
+        function displayFoods() {
+            const searchTerm = searchInput.value.toLowerCase();
+            foodListContainer.innerHTML = '';
+            const filteredFoods = foodData.filter(food =>
+                (currentCategory ? food.category === currentCategory : true) &&
+                food.name.toLowerCase().includes(searchTerm)
+            );
+
+            if (filteredFoods.length === 0) {
+                foodListContainer.innerHTML = `<p class="text-gray-500 col-span-full text-center py-4">該当する食材が見つかりません。</p>`;
+                return;
+            }
+
+            filteredFoods.forEach(food => {
+                const card = document.createElement('div');
+                card.className = 'food-card bg-white p-4 rounded-lg shadow-md hover:shadow-xl border border-gray-200 hover:border-red-400 flex flex-col justify-between';
+                
+                const carbs = typeof food.carbs_g === 'number' ? food.carbs_g.toFixed(1) : food.carbs_g;
+                const fat = typeof food.fat_g === 'number' ? food.fat_g.toFixed(1) : food.fat_g;
+                const protein = typeof food.protein_g === 'number' ? food.protein_g.toFixed(1) : food.protein_g;
+                const fiber = typeof food.fiber_g === 'number' ? food.fiber_g.toFixed(1) : food.fiber_g;
+                const placeholderFoodImage = `https://placehold.co/60x60/e9ecef/adb5bd?text=${encodeURIComponent(food.name.substring(0,2))}`;
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-start space-x-3 mb-2">
+                            <img src="${food.imageUrl || placeholderFoodImage}" alt="${food.name}" class="food-image" onerror="this.onerror=null;this.src='${placeholderFoodImage}';">
+                            <div>
+                                <h3 class="text-lg font-semibold card-title mb-1 cursor-pointer hover:underline">${food.name}</h3>
+                                <p class="text-xs text-gray-500 mb-1">カテゴリ: ${food.category}</p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-1">1ポーション (${food.portionWeight_g}g): ${food.calories_kcal}kcal</p>
+                        <p class="text-sm text-gray-600">目安量: ${food.portionGuide}</p>
+                        <hr class="my-2 border-gray-200">
+                        <div class="text-xs grid grid-cols-2 gap-x-2 text-gray-700">
+                            <p>糖質: ${carbs}g</p>
+                            <p>脂質: ${fat}g</p>
+                            <p>タンパク質: ${protein}g</p>
+                            <p>食物繊維: ${fiber}g</p>
+                        </div>
+                    </div>
+                    <button class="add-to-list-button mt-3 w-full rat-secondary-button font-semibold py-2 px-3 rounded-md text-sm">
+                        リストに追加
+                    </button>
+                `;
+                card.querySelector('h3').addEventListener('click', (e) => {
+                    e.stopPropagation(); 
+                    selectedFoodForSingleCalc = food;
+                    displaySelectedFoodInfoForSingleCalc();
+                    calculationSection.classList.remove('hidden');
+                    calculationResultSection.classList.add('hidden');
+                    gramsInput.value = '';
+                    gramsInput.focus();
+                    calculationSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+
+                card.querySelector('.add-to-list-button').addEventListener('click', () => {
+                    addIngredientToMultiList(food);
+                });
+                foodListContainer.appendChild(card);
+            });
+        }
+        
+        function addIngredientToMultiList(food) {
+            const uniqueId = `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            selectedIngredientsList.push({ ...food, uniqueId: uniqueId, grams: food.portionWeight_g || 0 }); 
+            displaySelectedIngredientsList();
+            showModal("情報", `${food.name} を計算リストに追加しました。`);
+            multiCalculationArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function displaySelectedIngredientsList() {
+            selectedIngredientsListContainer.innerHTML = '';
+            if (selectedIngredientsList.length === 0) {
+                selectedIngredientsListContainer.innerHTML = '<p class="text-sm text-gray-500">計算する食材を下のリストから追加してください。</p>';
+                calculateTotalNutritionButton.disabled = true;
+                totalNutritionResultContainer.classList.add('hidden');
+                return;
+            }
+
+            calculateTotalNutritionButton.disabled = false;
+            selectedIngredientsList.forEach((item, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'flex items-center justify-between p-2.5 border border-gray-200 rounded-lg bg-gray-50';
+                itemDiv.innerHTML = `
+                    <div class="flex-grow pr-2">
+                        <span class="font-medium text-sm text-gray-800">${item.name}</span>
+                        <p class="text-xs text-gray-500">${item.category}</p>
+                    </div>
+                    <input type="number" value="${item.grams}" min="0" placeholder="g" class="multi-grams-input w-20 p-1.5 border border-gray-300 rounded-md text-sm mx-2 text-right appearance-none focus:ring-1 focus:ring-red-500" data-uniqueid="${item.uniqueId}">
+                    <button class="remove-ingredient-button text-red-500 hover:text-red-700 font-bold text-xl px-2" data-uniqueid="${item.uniqueId}">&times;</button>
+                `;
+                selectedIngredientsListContainer.appendChild(itemDiv);
+
+                itemDiv.querySelector('.multi-grams-input').addEventListener('change', (e) => {
+                    const newGrams = parseFloat(e.target.value);
+                    const uniqueId = e.target.dataset.uniqueid;
+                    const itemInList = selectedIngredientsList.find(sItem => sItem.uniqueId === uniqueId);
+                    if (itemInList) {
+                        itemInList.grams = isNaN(newGrams) || newGrams < 0 ? 0 : newGrams;
+                    }
+                });
+
+                itemDiv.querySelector('.remove-ingredient-button').addEventListener('click', (e) => {
+                    const uniqueIdToRemove = e.target.dataset.uniqueid;
+                    selectedIngredientsList = selectedIngredientsList.filter(sItem => sItem.uniqueId !== uniqueIdToRemove);
+                    displaySelectedIngredientsList(); 
+                });
+            });
+        }
+        
+        calculateTotalNutritionButton.addEventListener('click', () => {
+            let totalCalories = 0, totalCarbs = 0, totalFat = 0, totalProtein = 0, totalFiber = 0, totalPortions = 0;
+
+            selectedIngredientsList.forEach(item => {
+                const grams = parseFloat(item.grams);
+                if (isNaN(grams) || grams <= 0) return;
+
+                const foodPortionWeight = parseFloat(item.portionWeight_g);
+                if (isNaN(foodPortionWeight) || foodPortionWeight === 0) return;
+
+                const portionsForItem = grams / foodPortionWeight;
+                totalPortions += portionsForItem;
+
+                totalCalories += (parseFloat(item.calories_kcal || 0) / foodPortionWeight) * grams;
+                totalCarbs += (parseFloat(item.carbs_g || 0) / foodPortionWeight) * grams;
+                totalFat += (parseFloat(item.fat_g || 0) / foodPortionWeight) * grams;
+                totalProtein += (parseFloat(item.protein_g || 0) / foodPortionWeight) * grams;
+                totalFiber += (parseFloat(item.fiber_g || 0) / foodPortionWeight) * grams;
+            });
+
+            multiResultTotalPortionsEl.textContent = totalPortions.toFixed(2);
+            multiResultTotalCaloriesEl.textContent = totalCalories.toFixed(1);
+            multiResultTotalCarbsEl.textContent = totalCarbs.toFixed(1);
+            multiResultTotalFatEl.textContent = totalFat.toFixed(1);
+            multiResultTotalProteinEl.textContent = totalProtein.toFixed(1);
+            multiResultTotalFiberEl.textContent = totalFiber.toFixed(1);
+            totalNutritionResultContainer.classList.remove('hidden');
+            totalNutritionResultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+
+        function displaySelectedFoodInfoForSingleCalc() {
+            if (selectedFoodForSingleCalc) {
+                selectedFoodNameEl.textContent = selectedFoodForSingleCalc.name;
+                selectedFoodPortionWeightEl.textContent = selectedFoodForSingleCalc.portionWeight_g;
+                selectedFoodCaloriesEl.textContent = selectedFoodForSingleCalc.calories_kcal;
+                selectedFoodPortionGuideEl.textContent = selectedFoodForSingleCalc.portionGuide;
+            }
+        }
+
+        calculateButton.addEventListener('click', () => { 
+            if (!selectedFoodForSingleCalc) {
+                showModal("エラー", "まず食材を選択してください。");
+                return;
+            }
+            const grams = parseFloat(gramsInput.value);
+            if (isNaN(grams) || grams <= 0) {
+                showModal("エラー", "正しいグラム数を入力してください。");
+                return;
+            }
+            const foodPortionWeight = parseFloat(selectedFoodForSingleCalc.portionWeight_g);
+            if (isNaN(foodPortionWeight) || foodPortionWeight === 0) {
+                 showModal("エラー", "選択された食材のポーション重量が無効です。");
+                 return;
+            }
+
+            const portions = grams / foodPortionWeight;
+            const caloriesPerGram = (parseFloat(selectedFoodForSingleCalc.calories_kcal) || 0) / foodPortionWeight;
+            const carbsPerGram = (parseFloat(selectedFoodForSingleCalc.carbs_g) || 0) / foodPortionWeight;
+            const fatPerGram = (parseFloat(selectedFoodForSingleCalc.fat_g) || 0) / foodPortionWeight;
+            const proteinPerGram = (parseFloat(selectedFoodForSingleCalc.protein_g) || 0) / foodPortionWeight;
+            const fiberPerGram = (parseFloat(selectedFoodForSingleCalc.fiber_g) || 0) / foodPortionWeight;
+
+            resultPortionsEl.textContent = portions.toFixed(2);
+            resultTotalCaloriesEl.textContent = (caloriesPerGram * grams).toFixed(1);
+            resultTotalCarbsEl.textContent = (carbsPerGram * grams).toFixed(1);
+            resultTotalFatEl.textContent = (fatPerGram * grams).toFixed(1);
+            resultTotalProteinEl.textContent = (proteinPerGram * grams).toFixed(1);
+            resultTotalFiberEl.textContent = (fiberPerGram * grams).toFixed(1);
+
+            calculationResultSection.classList.remove('hidden');
+            calculationResultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        
+        guideToggleButton.addEventListener('click', () => {
+            const isHidden = guideToggleContent.style.display === 'none' || guideToggleContent.style.display === '';
+            guideToggleContent.style.display = isHidden ? 'block' : 'none';
+            guideToggleButton.classList.toggle('open', isHidden);
+        });
+
+        async function initializeApp() {
+            await fetchFoodData();
+            createCategoryTabs();
+            displayFoods();
+            displaySelectedIngredientsList(); 
+            searchInput.addEventListener('input', displayFoods);
+        }
+
+        initializeApp();
+    </script>
+</body>
+</html>
 
